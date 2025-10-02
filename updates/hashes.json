@@ -1,5 +1,5 @@
 {
-  "mac_cleaner.py": "55b87201621c0a68082cb145792a2a424292aa4cb9e099d06b95f70237c7f720",
+  "mac_cleaner.py": "b42dac1693cc9807373dd96dc95eda7f0a4a1ba12bbf7de72115e71b1f072778",
   "config/settings.json": "0e48b2627017d82c721121dc1d05a0e9ac3b741e26f49abe156385b34a9d9335",
   "malware_scanner/signatures_min.json": "bd5c2a1d128a379177c15c9499ac8eff6d2520e465ee287a1cda45d613024f05",
   "plugins/plugin_loader.py": "764c5765c033998a1932c2ec66cd7b4ff76692fab60bf9969cd5053850256804",
@@ -7,8 +7,8 @@
   "plugins/homebrew_cleanup.py": "0486f1adaac54ec43a0fe8263cbfdac50600bb41cae2304ee1594601e1c672b9",
   "plugins/xcode_cleanup.py": "c62a5399d870c925e0e27f709316d53ebc8e2ed56e230c992d6a62599b72bb37",
   "plugins/node_modules_cleanup.py": "899c069469bd7ab16a84533cced3ed9985f0c1b6fb1ccb10b84599a5cc17986d",
-  "utils/updater.py": "c4bf2ff92c030c888649fe630fe4365c9c4e27cc722c3c0d82f92debf008ce47",
-  "utils/notifications.py": "276af6bbc1e3f03375f11013c98cd4c1ab3ab0c291717f7c88432042259a57dc",
+  "utils/updater.py": "841b3ab79865b8a97f09b59b99d52358b3a21eb28f5ff5b20ba1e3fd2e494981",
+  "utils/notifications.py": "88f3731adcb1e23f2c79443a5d533f6ebfb4926a26a00ff5be7400c5a1c7092c",
   "utils/launchagent.py": "9dd4d8ee6fa41daf5c735711096913f7201e37cb413e5e3e20b70318d30a6b35",
   "utils/battery.py": "2c8bcc193d12c951af9c095af6e3a54c9a7c8b2addd8930797159343c98653c2",
   "utils/reports.py": "3db55cc3706227844cb0aa0acdc56ff0e8103a370924f9ddf3728626fb126b18",
@@ -17,5 +17,7 @@
   "scheduler/auto_runner.py": "9b5702dbf0e8214bf5795e8d932328c4fca5ae6bb4f6eea1e38c0cc377bb94ea",
   "database/db.py": "e3b330aea288cc20ccc533e37bf3a01adfa4d77f616dcfc9164f4a85011bacf4",
   "ui/theme.py": "56897e4dd20e1136b9fb118ec9e1e277b9881c89c2c8ddda17c5b1ea903157b6",
-  "config/loader.py": "c17c0719f33c678f6e07a0d329ec84797ee537917a5b8c4321be766b17b47ef5"
+  "config/loader.py": "c17c0719f33c678f6e07a0d329ec84797ee537917a5b8c4321be766b17b47ef5",
+  "utils/profiler.py": "a3f84a1f3b40be29b32b4dc5289ed35ee3dc1b2457c8c804289dac3063f17a05",
+  "utils/heuristic.py": "b3a810eb4c1d7511954e8c0728393f60dd1921d2fa912f6dbfd8ed49132720a7"
 }

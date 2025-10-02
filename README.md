@@ -173,14 +173,76 @@ git push -u origin main
 ## 🧪 Roadmap Proposée
 | Version | Fonctionnalité | Détail | État |
 |---------|----------------|--------|------|
-| 3.1 | Mise à jour auto | Téléchargement signatures + manifest | PARTIEL |
-| 3.2 | Sandboxing | Exécution isolée scans risqués | À FAIRE |
-| 3.3 | Analyse heuristique | CPU / réseau anormal | À FAIRE |
-| 3.4 | Interface SwiftUI | Menubar + SwiftUI | À FAIRE |
-| 3.5 | Notif Centre | Notifications avancées | EN COURS |
-| 3.6 | Plugin System | Docker, Xcode, Homebrew | FAIT |
+| 3.1 | Mise à jour auto | Téléchargement signatures + manifest | FAIT |
+| 3.2 | Tests unitaires | Framework pytest + CI/CD | FAIT |
+| 3.3 | Profiling performance | Mesure CPU/disque avant/après | FAIT |
+| 3.4 | Notifications améliorées | pync + types avancés | FAIT |
+| 3.5 | Détection heuristique | Surveillance processus + fichiers | FAIT |
+| 3.6 | Plugin System | Docker, Xcode, Homebrew, node_modules | FAIT |
 | 3.7 | Intégrité & Hash | Manifest + vérification UI | FAIT |
+| 3.8 | Menu Bar interface | SwiftUI/pyobjc app native | À FAIRE |
 | 4.0 | Cloud Sync | Sync config & stats via Gist | À FAIRE |
+
+## 🧪 Tests & Qualité (Nouveauté v3.2+)
+Structure complète de tests unitaires avec couverture des modules critiques:
+
+```bash
+# Lancer tous les tests
+./tests/run_tests.py
+
+# Test spécifique
+./tests/run_tests.py test_integrity.TestIntegrity.test_hash_file
+
+# Vérification intégrité (standalone)
+./verify_integrity.py
+```
+
+Tests inclus:
+- `test_integrity.py` : Module de vérification d'intégrité
+- `test_plugins.py` : Système de plugins et chargement dynamique
+- `run_tests.py` : Runner unifié avec rapport détaillé
+
+## 📊 Profiling Performance (Nouveauté v3.3+)
+Mesure en temps réel des métriques système avant/après nettoyage:
+
+Métriques collectées:
+- **CPU** : Utilisation % + fréquence
+- **Mémoire** : RAM libérée + pourcentage
+- **Disque** : Espace libéré + I/O opérations
+- **Processus** : Nombre de processus actifs
+- **Réseau** : Activité bytes envoyés/reçus
+
+Utilisation:
+1. Cliquer "📊 Profiling" pour activer
+2. Lancer nettoyage normal
+3. Rapport détaillé automatique + export JSON
+
+## 🔍 Détection Heuristique (Nouveauté v3.5+)
+Surveillance intelligente de comportements suspects:
+
+Surveillance:
+- **Processus CPU** : Détection utilisation excessive (>80% pendant >30s)
+- **Fichiers sensibles** : Monitoring `LaunchAgents`, `LaunchDaemons` 
+- **Créations suspectes** : Fichiers .plist, .app, patterns suspects
+- **Activité réseau** : Processus avec beaucoup de connexions
+
+Utilisation:
+1. Cliquer "🔍 Surveillance" pour démarrer monitoring
+2. Alertes temps réel dans logs + notifications macOS
+3. Export alertes vers JSON pour analyse
+
+## 🔔 Notifications Avancées (Nouveauté v3.4+)
+Système de notifications robuste avec support pync:
+
+Types disponibles:
+- **Simples** : Titre + message basique
+- **Progression** : Avec pourcentage et stats
+- **Complétion** : Résumé avec métriques (MB libérés, durée, etc.)
+- **Alertes** : Warning/Error/Critical avec sons différenciés
+
+Fallback automatique osascript → pync selon disponibilité.
+
+Test: Bouton "🔔 Test Notifs" pour voir tous les types.
 
 ## 🧠 Idées Futures (Plus Avancé)
 - Détection anomalies: baseline des profils CPU / I/O

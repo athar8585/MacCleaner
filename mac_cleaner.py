@@ -24,14 +24,16 @@ from database.db import init_db, record_clean_run, stats_summary
 from malware_scanner.scanner import MalwareScanner
 from scheduler.auto_runner import AutoScheduler
 from ui.theme import ThemeManager
-from utils.updater import check_for_update, apply_signature_update
-from utils.notifications import notify
+from utils.updater import check_for_update, apply_signature_update, full_update_check
+from utils.notifications import notify, notify_completion, notify_alert
 from utils.launchagent import install_launch_agent, uninstall_launch_agent, is_launch_agent_installed
 from utils import battery as battery_util
 from utils.reports import generate_html_report
 from plugins.plugin_loader import PluginManager
 from utils.pdf_export import html_to_pdf
 from utils.integrity import verify_paths
+from utils.profiler import PerformanceProfiler
+from utils.heuristic import HeuristicScanner
 import argparse
 
 class MacCleanerPro:
@@ -260,9 +262,12 @@ class MacCleanerPro:
                                      command=self.scan_system, style='Accent.TButton')
         self.scan_button.grid(row=0, column=0, padx=5)
         
-        # Bouton de nettoyage
+        # Bouton de nettoyage (dynamique selon profiling)
+        def get_clean_command():
+            return self.start_cleaning_with_profiling if self.profiling_enabled.get() else self.start_cleaning
+        
         self.clean_button = ttk.Button(button_frame, text="🧹 Nettoyer Maintenant", 
-                                      command=self.start_cleaning, style='Accent.TButton')
+                                      command=lambda: get_clean_command()(), style='Accent.TButton')
         self.clean_button.grid(row=0, column=1, padx=5)
         
         # Bouton d'optimisation
@@ -307,8 +312,18 @@ class MacCleanerPro:
         self.pdf_button.grid(row=2, column=1, padx=5, pady=5)
 
         # Bouton de vérification d'intégrité
-        integrity_btn = ttk.Button(button_frame, text='Vérifier intégrité', command=self.verify_integrity)
-        integrity_btn.grid(row=2, column=2, padx=5, pady=5)
+        # Ligne 5: Nouvelles fonctionnalités (étapes 2-5)
+        profiler_btn = ttk.Button(btn_frame, text='📊 Profiling', command=self.toggle_profiling)
+        profiler_btn.grid(row=5, column=1, padx=5, pady=4, sticky='ew')
+        
+        heuristic_btn = ttk.Button(btn_frame, text='🔍 Surveillance', command=self.toggle_heuristic)
+        heuristic_btn.grid(row=5, column=2, padx=5, pady=4, sticky='ew')
+        
+        test_notif_btn = ttk.Button(btn_frame, text='🔔 Test Notifs', command=self.test_notifications)
+        test_notif_btn.grid(row=5, column=3, padx=5, pady=4, sticky='ew')
+        
+        full_update_btn = ttk.Button(btn_frame, text='⬆️ MAJ Complète', command=self.check_full_update)
+        full_update_btn.grid(row=6, column=0, padx=5, pady=4, sticky='ew')
 
         # Mettre à jour texte agent selon état
         self.agent_button.configure(text="⚙️ Agent: ON" if self.agent_installed else "⚙️ Agent: OFF")
@@ -951,6 +966,86 @@ class MacCleanerPro:
             except Exception as e:
                 self.log(f'❌ Plugin {name} erreur: {e}')
         self.log(f'✅ Plugins terminés. Gain total {(total_freed/1024/1024):.1f} MB')
+
+    def toggle_profiling(self):
+        """Activer/désactiver le profiling de performance"""
+        current = self.profiling_enabled.get()
+        self.profiling_enabled.set(not current)
+        status = "ON" if not current else "OFF"
+        self.log_message(f"📊 Profiling de performance: {status}")
+    
+    def toggle_heuristic(self):
+        """Activer/désactiver la surveillance heuristique"""
+        current = self.heuristic_enabled.get()
+        self.heuristic_enabled.set(not current)
+        
+        if not current:
+            self.heuristic_scanner.start_monitoring()
+            self.log_message("🔍 Surveillance heuristique démarrée")
+        else:
+            self.heuristic_scanner.stop_monitoring()
+            self.log_message("🔍 Surveillance heuristique arrêtée")
+    
+    def test_notifications(self):
+        """Tester les différents types de notifications"""
+        from utils.notifications import notify, notify_completion, notify_alert
+        
+        self.log_message("🔔 Test des notifications...")
+        
+        # Test notification simple
+        notify("MacCleaner Pro", "Test notification basique")
+        
+        # Test avec statistiques
+        stats = {'freed_mb': 128.5, 'files_cleaned': 456, 'duration': 12.3}
+        notify_completion("Test terminé", "Nettoyage de test réussi", stats=stats)
+        
+        # Test alerte
+        notify_alert("Test d'alerte", "Ceci est un test d'alerte", alert_type='warning')
+        
+        self.log_message("✅ Tests notifications envoyés")
+    
+    def check_full_update(self):
+        """Vérifier et proposer mise à jour complète"""
+        from utils.updater import full_update_check
+        
+        self.log_message("⬆️ Vérification mise à jour complète...")
+        
+        def update_thread():
+            try:
+                available, message = full_update_check(self.log_message)
+                if available:
+                    from utils.notifications import notify_alert
+                    notify_alert("Mise à jour disponible", message, alert_type='warning')
+                self.log_message(f"ℹ️ {message}")
+            except Exception as e:
+                self.log_message(f"❌ Erreur vérification: {e}")
+        
+        threading.Thread(target=update_thread, daemon=True).start()
+    
+    def start_cleaning_with_profiling(self):
+        """Lancer nettoyage avec profiling si activé"""
+        if self.profiling_enabled.get():
+            self.profiler.start_profiling()
+        
+        # Lancer le nettoyage normal
+        original_result = self.start_cleaning()
+        
+        if self.profiling_enabled.get():
+            # Arrêter profiling et afficher résultats
+            summary = self.profiler.stop_profiling()
+            self.log_message("📊 PROFIL DE PERFORMANCE:")
+            for line in summary.split('\n'):
+                self.log_message(f"    {line}")
+            
+            # Exporter si requis
+            try:
+                profile_path = f"exports/profile_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                if self.profiler.export_to_file(profile_path):
+                    self.log_message(f"📊 Profil exporté: {profile_path}")
+            except Exception as e:
+                self.log_message(f"⚠️ Erreur export profil: {e}")
+        
+        return original_result
 
 def main():
     """Point d'entrée principal avec support CLI"""
