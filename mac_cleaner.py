@@ -29,6 +29,8 @@ from utils.notifications import notify
 from utils.launchagent import install_launch_agent, uninstall_launch_agent, is_launch_agent_installed
 from utils import battery as battery_util
 from utils.reports import generate_html_report
+from plugins.plugin_loader import PluginManager
+from utils.pdf_export import html_to_pdf
 import argparse
 
 class MacCleanerPro:
@@ -105,6 +107,9 @@ class MacCleanerPro:
         self.root.after(5000, self._refresh_stats_periodic)
         
         self.agent_installed = is_launch_agent_installed()
+        
+        # Initialiser le gestionnaire de plugins
+        self.plugin_manager = PluginManager(self.log_message)
         
         self.setup_gui()
         
@@ -295,6 +300,10 @@ class MacCleanerPro:
         self.dry_button.grid(row=1, column=3, padx=5, pady=5)
         self.html_report_button = ttk.Button(parent, text="📄 Rapport HTML", command=self.generate_html_post)
         self.html_report_button.grid(row=1, column=4, padx=5, pady=5)
+        self.plugins_button = ttk.Button(button_frame, text="🔌 Plugins", command=self.run_plugins)
+        self.plugins_button.grid(row=2, column=0, padx=5, pady=5)
+        self.pdf_button = ttk.Button(button_frame, text="📝 PDF Rapport", command=self.generate_pdf_report)
+        self.pdf_button.grid(row=2, column=1, padx=5, pady=5)
 
         # Mettre à jour texte agent selon état
         self.agent_button.configure(text="⚙️ Agent: ON" if self.agent_installed else "⚙️ Agent: OFF")
@@ -888,19 +897,27 @@ class MacCleanerPro:
             notify('MacCleaner Pro', 'Agent installé')
         self.agent_button.configure(text="⚙️ Agent: ON" if self.agent_installed else "⚙️ Agent: OFF")
         
-    def generate_html_post(self):
-        if not self.analyzed_files:
-            self.log_message("⚠️ Pas de données analysées pour rapport")
+    def run_plugins(self):
+        self.log_message("🔁 Exécution des plugins...")
+        threading.Thread(target=self.plugin_manager.run_all, daemon=True).start()
+
+    def generate_pdf_report(self):
+        exports = self.settings.get('reports', {}).get('export_dir','exports')
+        from pathlib import Path
+        latest_html = None
+        exp_dir = Path(exports)
+        if exp_dir.exists():
+            htmls = sorted([p for p in exp_dir.iterdir() if p.suffix=='.html'])
+            if htmls:
+                latest_html = htmls[-1]
+        if not latest_html:
+            self.log_message("⚠️ Aucun rapport HTML disponible")
             return
-        try:
-            generate_html_report(
-                self.settings.get('reports', {}).get('export_dir','exports'),
-                self.analyzed_files,
-                self.total_freed_space/(1024*1024),
-                [c for c,v in self.cleanup_vars.items() if v.get()],
-                0.0,
-                'manual',
-                self.log_message
-            )
-        except Exception as e:
-            self.log_message(f"❌ Rapport échoué: {e}")
+        pdf_path = exp_dir / (latest_html.stem + '.pdf')
+        if html_to_pdf(latest_html, pdf_path, self.log_message):
+            notify('MacCleaner Pro', 'PDF généré')
+
+    # Placeholder signature code (future signing integration)
+    def verify_integrity(self):
+        # Could compute hash of core files & compare to manifest
+        pass
