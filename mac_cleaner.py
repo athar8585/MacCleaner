@@ -27,6 +27,8 @@ from ui.theme import ThemeManager
 from utils.updater import check_for_update, apply_signature_update
 from utils.notifications import notify
 from utils.launchagent import install_launch_agent, uninstall_launch_agent, is_launch_agent_installed
+from utils import battery as battery_util
+from utils.reports import generate_html_report
 import argparse
 
 class MacCleanerPro:
@@ -291,6 +293,8 @@ class MacCleanerPro:
         self.agent_button.grid(row=1, column=2, padx=5, pady=5)
         self.dry_button = ttk.Button(button_frame, text="💡 Dry-Run: OFF", command=self.toggle_dry_run)
         self.dry_button.grid(row=1, column=3, padx=5, pady=5)
+        self.html_report_button = ttk.Button(parent, text="📄 Rapport HTML", command=self.generate_html_post)
+        self.html_report_button.grid(row=1, column=4, padx=5, pady=5)
 
         # Mettre à jour texte agent selon état
         self.agent_button.configure(text="⚙️ Agent: ON" if self.agent_installed else "⚙️ Agent: OFF")
@@ -328,8 +332,10 @@ class MacCleanerPro:
         self.root.after(15000, self._refresh_stats_periodic)
 
     def start_cleaning(self, auto=False):
-        # override pour enregistrer mode
         if self.cleaning_active:
+            return
+        # Batterie / alimentation
+        if not battery_util.can_clean(self.settings, self.log_message):
             return
         if not auto:
             response = messagebox.askyesno("Confirmation", "Êtes-vous sûr de vouloir procéder au nettoyage ?\nCette action est irréversible.")
@@ -369,7 +375,17 @@ class MacCleanerPro:
             self.log_message(f"✅ Nettoyage terminé! Espace libéré: {self.total_freed_space / (1024*1024):.1f} MB")
             notify('MacCleaner Pro', f'Nettoyage terminé: {self.total_freed_space / (1024*1024):.1f} MB libérés')
             self.progress_var.set("Nettoyage terminé")
-            
+            # Génération rapport HTML si activé
+            if self.settings.get('reports', {}).get('html_enabled'):
+                generate_html_report(
+                    self.settings.get('reports', {}).get('export_dir','exports'),
+                    self.analyzed_files,
+                    self.total_freed_space/(1024*1024),
+                    active_categories,
+                    duration,
+                    mode,
+                    self.log_message
+                )
         except Exception as e:
             self.log_message(f"❌ Erreur: {str(e)}")
         finally:
@@ -872,27 +888,19 @@ class MacCleanerPro:
             notify('MacCleaner Pro', 'Agent installé')
         self.agent_button.configure(text="⚙️ Agent: ON" if self.agent_installed else "⚙️ Agent: OFF")
         
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--dry-run', action='store_true', help='Analyse sans suppression')
-    parser.add_argument('--daemon', action='store_true', help='Mode agent (pas d\'UI complète)')
-    args = parser.parse_args()
-    if os.geteuid() == 0:
-        print("⚠️  Ce script ne doit pas être lancé avec sudo")
-        sys.exit(1)
-    app = MacCleanerPro()
-    if args.dry_run:
-        app.analyze_only.set(True)
-        app.log_message("🔍 Mode dry-run activé: aucune suppression")
-    # Vérification mise à jour au démarrage
-    app.root.after(2000, lambda: check_for_update(app.log_message))
-    if args.daemon:
-        # Mode agent : pas de mainloop graphique complète
-        app.log_message("🤖 Mode agent lancé (daemon)")
-        # Lancer un scan malware périodique léger + auto scheduler déjà actif
-        def periodic_tasks():
-            if not app.cleaning_active:
-                app.scan_malware_async()
-            app.root.after(3600*1000, periodic_tasks)
-        app.root.after(5000, periodic_tasks)
-    app.run()
+    def generate_html_post(self):
+        if not self.analyzed_files:
+            self.log_message("⚠️ Pas de données analysées pour rapport")
+            return
+        try:
+            generate_html_report(
+                self.settings.get('reports', {}).get('export_dir','exports'),
+                self.analyzed_files,
+                self.total_freed_space/(1024*1024),
+                [c for c,v in self.cleanup_vars.items() if v.get()],
+                0.0,
+                'manual',
+                self.log_message
+            )
+        except Exception as e:
+            self.log_message(f"❌ Rapport échoué: {e}")

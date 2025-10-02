@@ -1,8 +1,19 @@
 {
-  "version": "3.0.0",
+  "version": "3.1.0",
   "app_name": "MacCleaner Pro",
   "auto_update": true,
   "update_url": "https://raw.githubusercontent.com/YOUR_USERNAME/MacCleanerPro/main/updates/latest.json",
+  
+  "reports": {
+    "html_enabled": true,
+    "pdf_enabled": false,
+    "export_dir": "exports"
+  },
+  
+  "battery": {
+    "min_percent_clean": 25,
+    "skip_on_battery": true
+  },
   
   "scheduler": {
     "enabled": true,
@@ -28,7 +39,7 @@
   
   "malware_scanner": {
     "enabled": true,
-    "database_url": "https://raw.githubusercontent.com/YOUR_USERNAME/MacCleanerPro/main/database/malware_signatures.db",
+    "database_url": "https://raw.githubusercontent.com/YOUR_USERNAME/MacCleanerPro/main/malware_scanner/signatures_min.json",
     "auto_update_database": true,
     "deep_scan": false,
     "quarantine_enabled": true
