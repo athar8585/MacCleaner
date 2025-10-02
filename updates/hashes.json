@@ -1,0 +1,8 @@
+{
+  "mac_cleaner.py": "55b87201621c0a68082cb145792a2a424292aa4cb9e099d06b95f70237c7f720",
+  "config/settings.json": "24c327684b044d2946921c7549b9c8879716214f6916ccd6e327cab02b302638",
+  "malware_scanner/signatures_min.json": "bd5c2a1d128a379177c15c9499ac8eff6d2520e465ee287a1cda45d613024f05",
+  "plugins/plugin_loader.py": "764c5765c033998a1932c2ec66cd7b4ff76692fab60bf9969cd5053850256804",
+  "plugins/docker_cleanup.py": "9ec9ef029da458f6f467da794f96a46221ef794abc435f850ee829f9fa110ddf",
+  "plugins/homebrew_cleanup.py": "0486f1adaac54ec43a0fe8263cbfdac50600bb41cae2304ee1594601e1c672b9"
+}

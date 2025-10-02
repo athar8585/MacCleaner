@@ -42,6 +42,12 @@
 
 ## 🚀 Installation
 
+### Méthode Ultra Rapide (one‑liner)
+```bash
+curl -fsSL https://raw.githubusercontent.com/VOTRE_USER/MacCleaner/main/install.sh | bash
+```
+
+### Méthode Manuelle
 1. **Cloner ou télécharger** le projet
 2. **Rendre exécutable** le script de lancement :
    ```bash
@@ -50,6 +56,10 @@
 3. **Lancer** l'application :
    ```bash
    ./run_cleaner.sh
+   ```
+4. (Optionnel) Construire l'app .app :
+   ```bash
+   ./build_app.sh && open "dist/MacCleaner Pro.app"
    ```
 
 ## 📋 Prérequis
@@ -102,7 +112,7 @@
 - ⚠️ **Redémarrer Finder** - Ferme toutes les fenêtres
 - ✅ **Scripts maintenance** - Recommandé
 
-## 🛡️ Sécurité & Anti-Malware (Nouveau v3.0)
+## 🛡️ Sécurité & Anti-Malware (v3.x)
 - Scan signatures (hash + patterns) via `malware_scanner/`
 - Quarantaine automatique (`malware_scanner/quarantine/`)
 - Mise à jour distante (préparer URL dans `config/settings.json`)
@@ -161,15 +171,16 @@ git push -u origin main
 - Ajouter futur code: vérifier version actuelle > proposer update.
 
 ## 🧪 Roadmap Proposée
-| Version | Fonctionnalité | Détail |
-|---------|----------------|--------|
-| 3.1 | Mise à jour auto | Téléchargement signatures + manifest |
-| 3.2 | Sandboxing | Exécution isolée scans risqués |
-| 3.3 | Analyse heuristique | Détection comportements CPU / réseau anormaux |
-| 3.4 | Interface SwiftUI | App .app native complète (menu bar) |
-| 3.5 | Notif Centre | Intégration native macOS notifications |
-| 3.6 | Plugin System | Ajout modules (ex: Docker prune, Xcode cache) |
-| 4.0 | Cloud Sync | Sync config & stats via GitHub Gist |
+| Version | Fonctionnalité | Détail | État |
+|---------|----------------|--------|------|
+| 3.1 | Mise à jour auto | Téléchargement signatures + manifest | PARTIEL |
+| 3.2 | Sandboxing | Exécution isolée scans risqués | À FAIRE |
+| 3.3 | Analyse heuristique | CPU / réseau anormal | À FAIRE |
+| 3.4 | Interface SwiftUI | Menubar + SwiftUI | À FAIRE |
+| 3.5 | Notif Centre | Notifications avancées | EN COURS |
+| 3.6 | Plugin System | Docker, Xcode, Homebrew | FAIT |
+| 3.7 | Intégrité & Hash | Manifest + vérification UI | FAIT |
+| 4.0 | Cloud Sync | Sync config & stats via Gist | À FAIRE |
 
 ## 🧠 Idées Futures (Plus Avancé)
 - Détection anomalies: baseline des profils CPU / I/O
@@ -181,8 +192,16 @@ git push -u origin main
 
 ## 🔐 Recommandations Sécurité
 - Ne jamais exécuter tout le programme en root; utiliser sudo uniquement pour opérations ciblées
-- Ajouter signature de code (codesign) pour distribution
-- Ajouter hash manifest pour vérifier intégrité MAJ
+- Signature de code (script `sign_and_release.sh`)
+- Hash manifest (`utils/integrity.py`) pour vérifier fichiers critiques
+- Quarantaine séparée pour malware isolés
+
+### Vérification d'Intégrité
+Bouton UI: "Vérifier intégrité" calcule SHA-256 des fichiers critiques et alerte si différence.
+Générer manifeste (exemple):
+```bash
+python -c "from utils.integrity import generate_manifest; generate_manifest(['mac_cleaner.py','config/settings.json','malware_scanner/signatures_min.json','plugins/plugin_loader.py'])"
+```
 
 ## ✅ Qualité & Tests (Prochaines étapes)
 - Tests unitaires: modules `scanner`, `db`, `scheduler`
@@ -209,7 +228,22 @@ python mac_cleaner.py --daemon &
 
 ## 🔄 Mises à Jour (Manifest)
 Fichier local: `updates/latest.json` (copier sur GitHub raw)
-Boutons UI: Vérifier MAJ / MAJ Signatures
+Boutons UI: Vérifier MAJ / MAJ Signatures / Vérifier intégrité
+
+## 🧩 Plugins (Système d'Extension)
+Répertoire: `plugins/`
+Chargement dynamique via `plugin_loader.py` (pattern *_cleanup.py)
+
+Plugins inclus :
+- `docker_cleanup.py` : Prune complet + calcul espace libéré (avant/après)
+- `xcode_cleanup.py` : Suppression DerivedData / Archives
+- `homebrew_cleanup.py` : `brew cleanup -s` + mesure gain caches
+
+Ajouter un plugin : créer `plugins/monplugin_cleanup.py` exposant `run(log)` retournant octets libérés.
+
+## 📄 Rapports HTML & PDF
+Après nettoyage ou sur clic "Rapport HTML" un fichier HTML détaillé est généré dans `exports/`.
+Export PDF via bouton "Export PDF" (utilise `wkhtmltopdf` si dispo sinon conversion basique texte → PDF).
 
 ---
 **MacCleaner Pro v3.0** – Automatisé, Sécurisé, Moderne.
