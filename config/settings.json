@@ -65,5 +65,10 @@
     "track_cleanings": true,
     "analytics": true,
     "export_enabled": true
+  },
+  "feature_flags": {
+    "enable_copilot_voice": true,
+    "enable_inline_chat": true,
+    "enable_gemini_2_5_pro": true
   }
 }
