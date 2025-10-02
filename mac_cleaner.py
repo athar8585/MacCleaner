@@ -907,16 +907,39 @@ class MacCleanerPro:
             'mac_cleaner.py',
             'config/settings.json',
             'malware_scanner/signatures_min.json',
-            'plugins/plugin_loader.py'
+            'plugins/plugin_loader.py',
+            'plugins/docker_cleanup.py',
+            'plugins/homebrew_cleanup.py',
+            'plugins/xcode_cleanup.py',
+            'plugins/node_modules_cleanup.py',
+            'utils/updater.py',
+            'utils/notifications.py',
+            'utils/launchagent.py',
+            'utils/battery.py',
+            'utils/reports.py',
+            'utils/pdf_export.py',
+            'utils/integrity.py',
+            'scheduler/auto_runner.py',
+            'database/db.py',
+            'ui/theme.py',
+            'config/loader.py'
         ]
         results = verify_paths(critical, base_dir=self.base_dir)
         for r in results:
             status = 'OK' if r['ok'] else 'ALTÉRÉ'
-            self.log(f"Intégrité {r['path']}: {status}")
+            if hasattr(self, 'log_message'):
+                self.log_message(f"Intégrité {r['path']}: {status}")
+            else:
+                print(f"Intégrité {r['path']}: {status}")
         if all(r['ok'] for r in results):
-            self.log('✅ Intégrité globale: OK')
+            msg = '✅ Intégrité globale: OK'
         else:
-            self.log('⚠️ Des fichiers semblent modifiés (comparez avec le dépôt source).')
+            msg = '⚠️ Des fichiers semblent modifiés (comparez avec le dépôt source).'
+        
+        if hasattr(self, 'log_message'):
+            self.log_message(msg)
+        else:
+            print(msg)
 
     def run_plugins(self):
         self.log('▶️ Exécution plugins...')
@@ -928,3 +951,65 @@ class MacCleanerPro:
             except Exception as e:
                 self.log(f'❌ Plugin {name} erreur: {e}')
         self.log(f'✅ Plugins terminés. Gain total {(total_freed/1024/1024):.1f} MB')
+
+def main():
+    """Point d'entrée principal avec support CLI"""
+    parser = argparse.ArgumentParser(description='MacCleaner Pro - Nettoyeur Mac Ultra-Complet')
+    parser.add_argument('--dry-run', action='store_true', help='Mode analyse seulement (aucune suppression)')
+    parser.add_argument('--daemon', action='store_true', help='Mode daemon (tâches automatiques en arrière-plan)')
+    parser.add_argument('--verify', action='store_true', help='Vérifier intégrité des fichiers critiques')
+    
+    args = parser.parse_args()
+    
+    if args.verify:
+        print("🔍 Vérification d'intégrité...")
+        # Créer vérification légère sans instanciation complète
+        from utils.integrity import verify_paths
+        critical = [
+            'mac_cleaner.py',
+            'config/settings.json',
+            'malware_scanner/signatures_min.json',
+            'plugins/plugin_loader.py',
+            'plugins/docker_cleanup.py',
+            'plugins/homebrew_cleanup.py',
+            'plugins/xcode_cleanup.py',
+            'plugins/node_modules_cleanup.py',
+            'utils/updater.py',
+            'utils/notifications.py',
+            'utils/launchagent.py',
+            'utils/battery.py',
+            'utils/reports.py',
+            'utils/pdf_export.py',
+            'utils/integrity.py',
+            'scheduler/auto_runner.py',
+            'database/db.py',
+            'ui/theme.py',
+            'config/loader.py'
+        ]
+        results = verify_paths(critical)
+        for r in results:
+            status = 'OK' if r['ok'] else 'ALTÉRÉ'
+            print(f"Intégrité {r['path']}: {status}")
+        if all(r['ok'] for r in results):
+            print('✅ Intégrité globale: OK')
+        else:
+            print('⚠️ Des fichiers semblent modifiés (comparez avec le dépôt source).')
+        return
+    
+    # Créer app seulement si pas en mode verify
+    app = MacCleanerPro()
+    
+    if args.dry_run:
+        app.analyze_only.set(True)
+        app.log_message("🔍 Mode analyse activé via CLI")
+    elif args.daemon:
+        app = MacCleanerPro()
+        app.daemon_mode = True
+        app.run_daemon_tasks()
+    else:
+        app = MacCleanerPro()
+        app.build_ui()
+        app.root.mainloop()
+
+if __name__ == "__main__":
+    main()
