@@ -1,2 +1,2 @@
 psutil==5.9.6
-tkinter
+urllib3>=2.0.0

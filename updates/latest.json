@@ -1,0 +1,6 @@
+{
+  "version": "3.1.0",
+  "min_app": "3.0.0",
+  "notes": "Ajout mode daemon, notifications, agent toggle, updater signatures.",
+  "signatures_url": "https://raw.githubusercontent.com/YOUR_USER/MacCleanerPro/main/malware_scanner/signatures_min.json"
+}

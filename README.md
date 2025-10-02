@@ -102,66 +102,114 @@
 - ⚠️ **Redémarrer Finder** - Ferme toutes les fenêtres
 - ✅ **Scripts maintenance** - Recommandé
 
-## 🛡️ Sécurité
+## 🛡️ Sécurité & Anti-Malware (Nouveau v3.0)
+- Scan signatures (hash + patterns) via `malware_scanner/`
+- Quarantaine automatique (`malware_scanner/quarantine/`)
+- Mise à jour distante (préparer URL dans `config/settings.json`)
+- Bouton: "🛡️ Scan Malware"
 
-- **Sauvegarde Automatique** : Création d'un backup avant nettoyage
-- **Vérifications Sécurité** : Validation des chemins avant suppression
-- **Logs Complets** : Traçabilité de toutes les opérations
-- **Restauration** : Possibilité de restaurer les sauvegardes
+## 🤖 Automatisation Intelligente
+- Planificateur autonome (`scheduler/auto_runner.py`)
+- Déclencheur selon seuils disque / RAM
+- Bouton bascule: "🤖 Auto Nettoyage: ON/OFF"
+- Mode auto enregistré en base (`database/mac_cleaner.db`)
 
-## ⚡ Performances Attendues
+## 🗄️ Base de Données & Statistiques
+- Suivi des sessions de nettoyage (temps, espace libéré, catégories)
+- Journalisation des détections malware
+- Récap en barre de statut (sessions | espace total | malware)
 
-### Espace Libéré (typique)
-- **Léger** : 500MB - 2GB
-- **Moyen** : 2GB - 5GB  
-- **Lourd** : 5GB - 20GB+
+## 🎨 Interface Style iOS 26
+- Thème sombre inspiré SF Symbols & Human Interface Guidelines
+- Accent dynamique (#007AFF)
+- Layout modulaire (`ui/theme.py`)
 
-### Améliorations
-- ⚡ **Démarrage** : 20-40% plus rapide
-- 🧠 **RAM** : 10-30% de mémoire libérée
-- 💾 **Disque** : Accès plus rapide
-- 🌐 **Réseau** : DNS plus réactif
-
-## 🔍 Que Nettoie l'Application
-
-### Dossiers Système
+## 📦 Structure Étendue
 ```
-~/Library/Caches/              # Caches utilisateur
-/Library/Caches/               # Caches système
-/System/Library/Caches/        # Caches macOS
-/var/folders/                  # Dossiers temporaires
-/tmp/                          # Fichiers temporaires
-/var/log/                      # Logs système
-~/Library/Logs/                # Logs utilisateur
-```
-
-### Applications Spécifiques
-```
-Safari: LocalStorage, Databases, History
-Chrome: Default/History, Cache
-Firefox: Profiles/*/places.sqlite
-Système: DiagnosticReports, CrashReporter
+config/loader.py              # Chargement & fusion settings
+config/settings.json          # Configuration utilisateur
+malware_scanner/              # Scanner + signatures
+scheduler/auto_runner.py      # Planification intelligente
+ui/theme.py                   # Thème moderne
+database/db.py                # SQLite + schema
+logs/                         # (futur) logs persistants
+updates/                      # Manifeste de mise à jour
 ```
 
-## ⚠️ Attention
+## ☁️ Sauvegarde sur GitHub
+1. Créer un dépôt: `MacCleanerPro`
+2. Initialiser Git dans ce dossier:
+```bash
+git init
+git remote add origin git@github.com:VOTRE_USER/MacCleanerPro.git
+git add .
+git commit -m "feat: initial release v3.0 with scheduler & malware scan"
+git branch -M main
+git push -u origin main
+```
+3. Mettre à jour `config/settings.json` (champs `update_url`, `database_url`).
 
-- **Fermer les applications** avant nettoyage
-- **Vérifier les téléchargements** importants
-- **Sauvegarder** les données critiques
-- **Redémarrer** après optimisations majeures
+## 🔄 Mises à Jour Distantes (Concept)
+- Publier `updates/latest.json` sur GitHub avec:
+```json
+{
+  "version": "3.1.0",
+  "min_app": "3.0.0",
+  "signatures_url": "https://raw.githubusercontent.com/VOTRE_USER/MacCleanerPro/main/malware_scanner/signatures_min.json"
+}
+```
+- Ajouter futur code: vérifier version actuelle > proposer update.
 
-## 🆘 Dépannage
+## 🧪 Roadmap Proposée
+| Version | Fonctionnalité | Détail |
+|---------|----------------|--------|
+| 3.1 | Mise à jour auto | Téléchargement signatures + manifest |
+| 3.2 | Sandboxing | Exécution isolée scans risqués |
+| 3.3 | Analyse heuristique | Détection comportements CPU / réseau anormaux |
+| 3.4 | Interface SwiftUI | App .app native complète (menu bar) |
+| 3.5 | Notif Centre | Intégration native macOS notifications |
+| 3.6 | Plugin System | Ajout modules (ex: Docker prune, Xcode cache) |
+| 4.0 | Cloud Sync | Sync config & stats via GitHub Gist |
 
-### Erreurs Communes
-- **Permission refusée** → Relancer avec les droits admin
-- **Fichier en cours d'utilisation** → Fermer l'application concernée
-- **Espace insuffisant** → Libérer de l'espace manuellement d'abord
+## 🧠 Idées Futures (Plus Avancé)
+- Détection anomalies: baseline des profils CPU / I/O
+- Gestion énergie: nettoyage déclenché sur secteur uniquement
+- Mode silencieux horaire (ne pas lancer pendant meetings)
+- Intégration Spotlight API pour indexer / exclure proprement
+- Export PDF rapports
+- Tableau de bord Web local (Flask) optionnel
 
-### Support
-- Logs détaillés dans l'interface
-- Sauvegardes dans `~/Desktop/MacCleaner_Backup/`
-- Restauration possible via le bouton "↩️ Restaurer"
+## 🔐 Recommandations Sécurité
+- Ne jamais exécuter tout le programme en root; utiliser sudo uniquement pour opérations ciblées
+- Ajouter signature de code (codesign) pour distribution
+- Ajouter hash manifest pour vérifier intégrité MAJ
+
+## ✅ Qualité & Tests (Prochaines étapes)
+- Tests unitaires: modules `scanner`, `db`, `scheduler`
+- Mode dry-run global (--dry-run) pour script CLI
+- Bench: mesure temps / catégorie + histogramme
+
+## 🧪 Modes Spéciaux
+- `--dry-run` : Aucune suppression (analyse + rapport)
+- `--daemon` : Mode agent discret (tâches périodiques + auto + mini scan malware)
+
+### Exemple
+```bash
+python mac_cleaner.py --dry-run
+python mac_cleaner.py --daemon &
+```
+
+## ⚙️ LaunchAgent
+- Installation / suppression via bouton "⚙️ Agent: ON/OFF"
+- Fichier : `~/Library/LaunchAgents/com.maccleaner.pro.autorun.plist`
+
+## 🔔 Notifications
+- macOS Notification Center + son de confirmation
+- Fin de nettoyage + nouvelle version
+
+## 🔄 Mises à Jour (Manifest)
+Fichier local: `updates/latest.json` (copier sur GitHub raw)
+Boutons UI: Vérifier MAJ / MAJ Signatures
 
 ---
-
-**⚡ MacCleaner Pro - Votre Mac comme neuf en un clic ! ⚡**
+**MacCleaner Pro v3.0** – Automatisé, Sécurisé, Moderne.

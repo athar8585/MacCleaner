@@ -18,6 +18,16 @@ import json
 import psutil
 import plistlib
 import sqlite3
+# Nouvelles intégrations
+from config.loader import load_settings, save_settings
+from database.db import init_db, record_clean_run, stats_summary
+from malware_scanner.scanner import MalwareScanner
+from scheduler.auto_runner import AutoScheduler
+from ui.theme import ThemeManager
+from utils.updater import check_for_update, apply_signature_update
+from utils.notifications import notify
+from utils.launchagent import install_launch_agent, uninstall_launch_agent, is_launch_agent_installed
+import argparse
 
 class MacCleanerPro:
     def __init__(self):
@@ -72,6 +82,27 @@ class MacCleanerPro:
                 '/private/var/tmp'
             ]
         }
+        
+        self.settings = load_settings()
+        init_db()
+        self.malware_scanner = MalwareScanner(self.log_message)
+        self.auto_scheduler = AutoScheduler(self._auto_trigger_clean, self.log_message)
+        # Appliquer thème moderne iOS-like
+        try:
+            dark_mode = True  # TODO: auto-détection
+            ThemeManager(self.root, dark=dark_mode).apply()
+        except Exception as e:
+            print("Theme load error", e)
+        # Lancer planificateur si activé
+        if self.settings['scheduler'].get('enabled'):
+            self.auto_scheduler.start()
+        
+        # Ajouter zone statut global
+        self.status_bar = tk.Label(self.root, text="Prêt", anchor='w', bg='#1C1C1E', fg='#FFFFFF')
+        self.status_bar.grid(row=99, column=0, sticky='ew')
+        self.root.after(5000, self._refresh_stats_periodic)
+        
+        self.agent_installed = is_launch_agent_installed()
         
         self.setup_gui()
         
@@ -245,176 +276,87 @@ class MacCleanerPro:
         self.analyze_button = ttk.Button(button_frame, text="📊 Rapport Détaillé", 
                                         command=self.generate_detailed_report)
         self.analyze_button.grid(row=0, column=5, padx=5)
+        # Ajout nouveaux boutons sécurité & auto
+        self.scan_malware_button = ttk.Button(parent, text="🛡️ Scan Malware", command=self.scan_malware_async)
+        self.scan_malware_button.grid(row=4, column=0, pady=(0,10))
+        self.toggle_auto_button = ttk.Button(parent, text="🤖 Auto Nettoyage: ON" if self.settings['scheduler'].get('enabled') else "🤖 Auto Nettoyage: OFF", command=self.toggle_auto_scheduler)
+        self.toggle_auto_button.grid(row=4, column=1, pady=(0,10))
         
-    def log_message(self, message):
-        """Ajouter un message au log"""
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        self.log_text.insert(tk.END, f"[{timestamp}] {message}\n")
-        self.log_text.see(tk.END)
-        self.root.update_idletasks()
-        
-    def calculate_size(self, category, paths, label):
-        """Calculer la taille des fichiers à nettoyer"""
-        try:
-            total_size = 0
-            for path_pattern in paths:
-                expanded_path = os.path.expanduser(path_pattern)
-                if os.path.exists(expanded_path):
-                    if os.path.isfile(expanded_path):
-                        total_size += os.path.getsize(expanded_path)
-                    elif os.path.isdir(expanded_path):
-                        total_size += self.get_directory_size(expanded_path)
-            
-            size_mb = total_size / (1024 * 1024)
-            if size_mb > 1024:
-                size_text = f"{size_mb/1024:.1f} GB"
-            else:
-                size_text = f"{size_mb:.1f} MB"
-                
-            label.configure(text=size_text, foreground='green')
-        except Exception as e:
-            label.configure(text="Erreur", foreground='red')
-            
-    def get_directory_size(self, path):
-        """Calculer la taille d'un répertoire"""
-        total_size = 0
-        try:
-            for dirpath, dirnames, filenames in os.walk(path):
-                for filename in filenames:
-                    try:
-                        filepath = os.path.join(dirpath, filename)
-                        total_size += os.path.getsize(filepath)
-                    except (OSError, IOError):
-                        continue
-        except (OSError, IOError):
-            pass
-        return total_size
-        
-    def scan_system(self):
-        """Scanner le système pour détecter les problèmes"""
-        self.log_message("🔍 Début du scan système...")
-        self.progress_var.set("Scan en cours...")
-        self.progress_bar['value'] = 0
-        
-        threading.Thread(target=self._scan_system_thread, daemon=True).start()
-        
-    def _scan_system_thread(self):
-        """Thread de scan système"""
-        scan_results = []
-        
-        # Vérification de l'espace disque
-        disk_usage = shutil.disk_usage('/')
-        free_percent = (disk_usage.free / disk_usage.total) * 100
-        
-        if free_percent < 10:
-            scan_results.append("⚠️  Espace disque critique (< 10%)")
-        elif free_percent < 20:
-            scan_results.append("⚠️  Espace disque faible (< 20%)")
-            
-        self.progress_bar['value'] = 25
-        
-        # Vérification de la mémoire
-        memory = psutil.virtual_memory()
-        if memory.percent > 80:
-            scan_results.append("⚠️  Utilisation mémoire élevée (> 80%)")
-            
-        self.progress_bar['value'] = 50
-        
-        # Vérification des processus
-        high_cpu_processes = []
-        for proc in psutil.process_iter(['pid', 'name', 'cpu_percent']):
-            try:
-                if proc.info['cpu_percent'] > 20:
-                    high_cpu_processes.append(proc.info['name'])
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                pass
-                
-        if high_cpu_processes:
-            scan_results.append(f"⚠️  Processus gourmands: {', '.join(high_cpu_processes[:3])}")
-            
-        self.progress_bar['value'] = 75
-        
-        # Vérification des fichiers volumineux
-        large_files = self.find_large_files()
-        if large_files:
-            scan_results.append(f"📁 {len(large_files)} fichiers volumineux détectés")
-            
-        self.progress_bar['value'] = 100
-        
-        # Affichage des résultats
-        if scan_results:
-            self.log_message("Problèmes détectés:")
-            for result in scan_results:
-                self.log_message(f"  {result}")
+        # Nouveaux boutons pour mises à jour et agent
+        self.update_button = ttk.Button(button_frame, text="⬆️ Vérifier MAJ", command=self.check_updates)
+        self.update_button.grid(row=1, column=0, padx=5, pady=5)
+        self.signatures_button = ttk.Button(button_frame, text="🛡️ MAJ Signatures", command=self.update_signatures)
+        self.signatures_button.grid(row=1, column=1, padx=5, pady=5)
+        self.agent_button = ttk.Button(button_frame, text="⚙️ Installer Agent", command=self.toggle_launch_agent)
+        self.agent_button.grid(row=1, column=2, padx=5, pady=5)
+        self.dry_button = ttk.Button(button_frame, text="💡 Dry-Run: OFF", command=self.toggle_dry_run)
+        self.dry_button.grid(row=1, column=3, padx=5, pady=5)
+
+        # Mettre à jour texte agent selon état
+        self.agent_button.configure(text="⚙️ Agent: ON" if self.agent_installed else "⚙️ Agent: OFF")
+
+    # --- Nouvelles fonctionnalités ---
+    def _auto_trigger_clean(self, auto=False):
+        if not self.cleaning_active:
+            self.start_cleaning(auto=auto)
+
+    def toggle_auto_scheduler(self):
+        enabled = self.settings['scheduler']['enabled']
+        if enabled:
+            self.settings['scheduler']['enabled'] = False
+            self.auto_scheduler.stop()
+            self.toggle_auto_button.configure(text="🤖 Auto Nettoyage: OFF")
+            self.log_message("⏹️ Planificateur arrêté")
         else:
-            self.log_message("✅ Aucun problème majeur détecté")
-            
-        self.progress_var.set("Scan terminé")
-        
-    def find_large_files(self, min_size_gb=1):
-        """Trouver les fichiers volumineux"""
-        large_files = []
-        search_paths = [
-            os.path.expanduser('~/Downloads'),
-            os.path.expanduser('~/Desktop'),
-            os.path.expanduser('~/Documents')
-        ]
-        
-        min_size_bytes = min_size_gb * 1024 * 1024 * 1024
-        
-        for search_path in search_paths:
-            if os.path.exists(search_path):
-                try:
-                    for root, dirs, files in os.walk(search_path):
-                        for file in files:
-                            filepath = os.path.join(root, file)
-                            try:
-                                if os.path.getsize(filepath) > min_size_bytes:
-                                    large_files.append(filepath)
-                            except (OSError, IOError):
-                                continue
-                except (OSError, IOError):
-                    continue
-                    
-        return large_files[:10]  # Limiter à 10 fichiers
-        
-    def start_cleaning(self):
-        """Démarrer le processus de nettoyage"""
+            self.settings['scheduler']['enabled'] = True
+            self.auto_scheduler.stop_flag = False
+            self.auto_scheduler.start()
+            self.toggle_auto_button.configure(text="🤖 Auto Nettoyage: ON")
+            self.log_message("▶️ Planificateur activé")
+        save_settings(self.settings)
+
+    def scan_malware_async(self):
+        targets = [os.path.expanduser('~/Downloads'), os.path.expanduser('~/Desktop')]
+        self.malware_scanner.async_scan(targets)
+
+    def _refresh_stats_periodic(self):
+        try:
+            s = stats_summary()
+            self.status_bar.configure(text=f"Sessions: {s['total_runs']} | Espace libéré: {s['total_space_freed_mb']:.1f} MB | Malware: {s['malware_detected']}")
+        except Exception:
+            pass
+        self.root.after(15000, self._refresh_stats_periodic)
+
+    def start_cleaning(self, auto=False):
+        # override pour enregistrer mode
         if self.cleaning_active:
             return
-            
-        response = messagebox.askyesno("Confirmation", 
-                                     "Êtes-vous sûr de vouloir procéder au nettoyage ?\n"
-                                     "Cette action est irréversible.")
-        if not response:
-            return
-            
+        if not auto:
+            response = messagebox.askyesno("Confirmation", "Êtes-vous sûr de vouloir procéder au nettoyage ?\nCette action est irréversible.")
+            if not response:
+                return
         self.cleaning_active = True
         self.clean_button.configure(text="🛑 Arrêter", command=self.stop_cleaning)
         self.total_freed_space = 0
-        
-        threading.Thread(target=self._cleaning_thread, daemon=True).start()
-        
-    def _cleaning_thread(self):
+        self._clean_start_ts = datetime.utcnow()
+        threading.Thread(target=self._cleaning_thread, kwargs={'mode': 'auto' if auto else 'manual'}, daemon=True).start()
+
+    def _cleaning_thread(self, mode='manual'):
         """Thread principal de nettoyage"""
         try:
             self.log_message("🧹 Début du nettoyage approfondi...")
             self.progress_var.set("Nettoyage en cours...")
-            
-            total_steps = len([k for k, v in self.cleanup_vars.items() if v.get()])
+            total_steps = len([k for k, v in self.cleanup_vars.items() if v.get()]) or 1
             current_step = 0
-            
-            # Créer une sauvegarde des préférences importantes
             self.create_backup()
-            
+            active_categories = []
             # Nettoyage par catégorie
             for category, var in self.cleanup_vars.items():
                 if not var.get() or not self.cleaning_active:
                     continue
-                    
+                active_categories.append(category)
                 self.log_message(f"Nettoyage: {category}")
                 self.clean_category(category)
-                
                 current_step += 1
                 self.progress_bar['value'] = (current_step / total_steps) * 100
                 
@@ -422,7 +364,10 @@ class MacCleanerPro:
             if self.cleaning_active:
                 self.apply_optimizations()
                 
+            duration = (datetime.utcnow() - self._clean_start_ts).total_seconds()
+            record_clean_run(self._clean_start_ts.isoformat(), duration, self.total_freed_space/(1024*1024), active_categories, mode)
             self.log_message(f"✅ Nettoyage terminé! Espace libéré: {self.total_freed_space / (1024*1024):.1f} MB")
+            notify('MacCleaner Pro', f'Nettoyage terminé: {self.total_freed_space / (1024*1024):.1f} MB libérés')
             self.progress_var.set("Nettoyage terminé")
             
         except Exception as e:
@@ -895,11 +840,59 @@ class MacCleanerPro:
         """Lancer l'application"""
         self.root.mainloop()
 
+    def toggle_dry_run(self):
+        current = self.analyze_only.get()
+        self.analyze_only.set(not current)
+        self.dry_button.configure(text=f"💡 Dry-Run: {'ON' if not current else 'OFF'}")
+        self.log_message(f"Mode dry-run: {'activé' if not current else 'désactivé'}")
+
+    def check_updates(self):
+        manifest = check_for_update(self.log_message)
+        if manifest:
+            notify('MacCleaner Pro', 'Nouvelle version disponible')
+
+    def update_signatures(self):
+        manifest = load_settings()
+        local_manifest = {'signatures_url': manifest.get('malware_scanner', {}).get('database_url')}
+        ok = apply_signature_update(local_manifest, self.log_message)
+        if ok:
+            self.malware_scanner._load_signatures()
+            notify('MacCleaner Pro', 'Signatures mises à jour')
+
+    def toggle_launch_agent(self):
+        if self.agent_installed:
+            if uninstall_launch_agent():
+                self.agent_installed = False
+                self.log_message("🛑 LaunchAgent désinstallé")
+                notify('MacCleaner Pro', 'Agent désinstallé')
+        else:
+            install_launch_agent()
+            self.agent_installed = True
+            self.log_message("⚙️ LaunchAgent installé")
+            notify('MacCleaner Pro', 'Agent installé')
+        self.agent_button.configure(text="⚙️ Agent: ON" if self.agent_installed else "⚙️ Agent: OFF")
+        
 if __name__ == "__main__":
-    # Vérifier les permissions
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dry-run', action='store_true', help='Analyse sans suppression')
+    parser.add_argument('--daemon', action='store_true', help='Mode agent (pas d\'UI complète)')
+    args = parser.parse_args()
     if os.geteuid() == 0:
         print("⚠️  Ce script ne doit pas être lancé avec sudo")
         sys.exit(1)
-        
     app = MacCleanerPro()
+    if args.dry_run:
+        app.analyze_only.set(True)
+        app.log_message("🔍 Mode dry-run activé: aucune suppression")
+    # Vérification mise à jour au démarrage
+    app.root.after(2000, lambda: check_for_update(app.log_message))
+    if args.daemon:
+        # Mode agent : pas de mainloop graphique complète
+        app.log_message("🤖 Mode agent lancé (daemon)")
+        # Lancer un scan malware périodique léger + auto scheduler déjà actif
+        def periodic_tasks():
+            if not app.cleaning_active:
+                app.scan_malware_async()
+            app.root.after(3600*1000, periodic_tasks)
+        app.root.after(5000, periodic_tasks)
     app.run()

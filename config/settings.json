@@ -1,0 +1,58 @@
+{
+  "version": "3.0.0",
+  "app_name": "MacCleaner Pro",
+  "auto_update": true,
+  "update_url": "https://raw.githubusercontent.com/YOUR_USERNAME/MacCleanerPro/main/updates/latest.json",
+  
+  "scheduler": {
+    "enabled": true,
+    "auto_clean_enabled": false,
+    "schedule_time": "02:00",
+    "schedule_days": ["monday", "thursday"],
+    "smart_scheduling": true
+  },
+  
+  "thresholds": {
+    "disk_space_alert": 10,
+    "memory_alert": 85,
+    "cache_size_alert": 5000,
+    "temp_files_alert": 1000
+  },
+  
+  "notifications": {
+    "enabled": true,
+    "show_completion": true,
+    "show_alerts": true,
+    "sound_enabled": true
+  },
+  
+  "malware_scanner": {
+    "enabled": true,
+    "database_url": "https://raw.githubusercontent.com/YOUR_USERNAME/MacCleanerPro/main/database/malware_signatures.db",
+    "auto_update_database": true,
+    "deep_scan": false,
+    "quarantine_enabled": true
+  },
+  
+  "protection": {
+    "icloud_protection": true,
+    "important_files_protection": true,
+    "recent_files_days": 7,
+    "backup_before_clean": true
+  },
+  
+  "ui": {
+    "theme": "auto",
+    "accent_color": "#007AFF",
+    "animations": true,
+    "transparency": true,
+    "ios26_style": true
+  },
+  
+  "database": {
+    "enabled": true,
+    "track_cleanings": true,
+    "analytics": true,
+    "export_enabled": true
+  }
+}
