@@ -31,6 +31,7 @@ from utils import battery as battery_util
 from utils.reports import generate_html_report
 from plugins.plugin_loader import PluginManager
 from utils.pdf_export import html_to_pdf
+from utils.integrity import verify_paths
 import argparse
 
 class MacCleanerPro:
@@ -304,6 +305,10 @@ class MacCleanerPro:
         self.plugins_button.grid(row=2, column=0, padx=5, pady=5)
         self.pdf_button = ttk.Button(button_frame, text="📝 PDF Rapport", command=self.generate_pdf_report)
         self.pdf_button.grid(row=2, column=1, padx=5, pady=5)
+
+        # Bouton de vérification d'intégrité
+        integrity_btn = ttk.Button(button_frame, text='Vérifier intégrité', command=self.verify_integrity)
+        integrity_btn.grid(row=2, column=2, padx=5, pady=5)
 
         # Mettre à jour texte agent selon état
         self.agent_button.configure(text="⚙️ Agent: ON" if self.agent_installed else "⚙️ Agent: OFF")
@@ -897,27 +902,29 @@ class MacCleanerPro:
             notify('MacCleaner Pro', 'Agent installé')
         self.agent_button.configure(text="⚙️ Agent: ON" if self.agent_installed else "⚙️ Agent: OFF")
         
-    def run_plugins(self):
-        self.log_message("🔁 Exécution des plugins...")
-        threading.Thread(target=self.plugin_manager.run_all, daemon=True).start()
-
-    def generate_pdf_report(self):
-        exports = self.settings.get('reports', {}).get('export_dir','exports')
-        from pathlib import Path
-        latest_html = None
-        exp_dir = Path(exports)
-        if exp_dir.exists():
-            htmls = sorted([p for p in exp_dir.iterdir() if p.suffix=='.html'])
-            if htmls:
-                latest_html = htmls[-1]
-        if not latest_html:
-            self.log_message("⚠️ Aucun rapport HTML disponible")
-            return
-        pdf_path = exp_dir / (latest_html.stem + '.pdf')
-        if html_to_pdf(latest_html, pdf_path, self.log_message):
-            notify('MacCleaner Pro', 'PDF généré')
-
-    # Placeholder signature code (future signing integration)
     def verify_integrity(self):
-        # Could compute hash of core files & compare to manifest
-        pass
+        critical = [
+            'mac_cleaner.py',
+            'config/settings.json',
+            'malware_scanner/signatures_min.json',
+            'plugins/plugin_loader.py'
+        ]
+        results = verify_paths(critical, base_dir=self.base_dir)
+        for r in results:
+            status = 'OK' if r['ok'] else 'ALTÉRÉ'
+            self.log(f"Intégrité {r['path']}: {status}")
+        if all(r['ok'] for r in results):
+            self.log('✅ Intégrité globale: OK')
+        else:
+            self.log('⚠️ Des fichiers semblent modifiés (comparez avec le dépôt source).')
+
+    def run_plugins(self):
+        self.log('▶️ Exécution plugins...')
+        total_freed = 0
+        for name, func in self.plugin_manager.plugins.items():
+            try:
+                freed = func(self.log) or 0
+                total_freed += freed
+            except Exception as e:
+                self.log(f'❌ Plugin {name} erreur: {e}')
+        self.log(f'✅ Plugins terminés. Gain total {(total_freed/1024/1024):.1f} MB')
