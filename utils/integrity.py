@@ -28,8 +28,8 @@ def load_hash_manifest(manifest_path: str = DEFAULT_HASH_FILE):
     return {}
 
 
-def verify_paths(paths, base_dir='.'):
-    manifest = load_hash_manifest()
+def verify_paths(paths, base_dir='.', manifest_path=DEFAULT_HASH_FILE):
+    manifest = load_hash_manifest(manifest_path)
     results = []
     for rel in paths:
         full = pathlib.Path(base_dir) / rel

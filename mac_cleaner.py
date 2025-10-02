@@ -90,6 +90,9 @@ class MacCleanerPro:
             ]
         }
         
+        # Méthode temporaire de log
+        self.log_message = lambda msg: print(f"[LOG] {msg}")
+        
         self.settings = load_settings()
         init_db()
         self.malware_scanner = MalwareScanner(self.log_message)
@@ -112,7 +115,7 @@ class MacCleanerPro:
         self.agent_installed = is_launch_agent_installed()
         
         # Initialiser le gestionnaire de plugins
-        self.plugin_manager = PluginManager(self.log_message)
+        self.plugin_manager = PluginManager(log_fn=self.log_message)
         
         self.setup_gui()
         

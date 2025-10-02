@@ -41,21 +41,25 @@ def run(log):
     
     def test_plugin_discovery(self):
         """Tester découverte des plugins"""
-        manager = PluginManager(self.plugin_dir)
-        
-        self.assertIn('test', manager.plugins)
-        self.assertTrue(callable(manager.plugins['test']))
-    
-    def test_plugin_execution(self):
-        """Tester exécution d'un plugin"""
-        manager = PluginManager(self.plugin_dir)
-        
         log_messages = []
         def test_log(msg):
             log_messages.append(msg)
         
+        manager = PluginManager(self.plugin_dir, test_log)
+        
+        self.assertIn('test', manager.plugins)
+        self.assertTrue(hasattr(manager.plugins['test'], 'run'))
+    
+    def test_plugin_execution(self):
+        """Tester exécution d'un plugin"""
+        log_messages = []
+        def test_log(msg):
+            log_messages.append(msg)
+        
+        manager = PluginManager(self.plugin_dir, test_log)
+        
         # Exécuter le plugin
-        result = manager.plugins['test'](test_log)
+        result = manager.plugins['test'].run(test_log)
         
         self.assertEqual(result, 1024)
         self.assertTrue(any('Test plugin exécuté' in msg for msg in log_messages))
@@ -67,18 +71,26 @@ def run(log):
         with open(error_plugin_path, 'w') as f:
             f.write('def run(log):\n    raise ValueError("Plugin test error")\n')
         
-        manager = PluginManager(self.plugin_dir)
+        log_messages = []
+        def test_log(msg):
+            log_messages.append(msg)
         
-        # Le plugin défaillant ne doit pas empêcher le chargement des autres
+        manager = PluginManager(self.plugin_dir, test_log)
+        
+        # Le plugin défaillant doit être chargé mais son exécution doit être gérée
         self.assertIn('test', manager.plugins)
-        # Le plugin défaillant peut ou non être chargé selon la robustesse du loader
+        self.assertIn('error', manager.plugins)
     
     def test_empty_plugin_dir(self):
         """Tester avec répertoire vide"""
         empty_dir = os.path.join(self.test_dir, 'empty')
         os.makedirs(empty_dir)
         
-        manager = PluginManager(empty_dir)
+        log_messages = []
+        def test_log(msg):
+            log_messages.append(msg)
+        
+        manager = PluginManager(empty_dir, test_log)
         self.assertEqual(len(manager.plugins), 0)
 
 if __name__ == '__main__':

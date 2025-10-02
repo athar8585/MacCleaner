@@ -63,7 +63,7 @@ class TestIntegrity(unittest.TestCase):
         rel_path = os.path.relpath(self.test_file, self.test_dir)
         generate_manifest([rel_path], self.test_dir, self.manifest_file)
         
-        results = verify_paths([rel_path], self.test_dir)
+        results = verify_paths([rel_path], self.test_dir, self.manifest_file)
         self.assertEqual(len(results), 1)
         self.assertTrue(results[0]['ok'])
     
@@ -76,7 +76,7 @@ class TestIntegrity(unittest.TestCase):
         with open(self.test_file, 'a') as f:
             f.write(' MODIFIED')
         
-        results = verify_paths([rel_path], self.test_dir)
+        results = verify_paths([rel_path], self.test_dir, self.manifest_file)
         self.assertEqual(len(results), 1)
         self.assertFalse(results[0]['ok'])
 

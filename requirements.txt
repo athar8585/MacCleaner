@@ -1,2 +1,4 @@
-psutil==5.9.6
+psutil>=5.9.0
+pync>=2.0.0
+python-dateutil>=2.0
 urllib3>=2.0.0
