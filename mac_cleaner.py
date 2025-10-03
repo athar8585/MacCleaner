@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
@@ -257,13 +258,63 @@ class MacCleanerPro:
         self.progress_bar = ttk.Progressbar(progress_frame, mode='determinate')
         self.progress_bar.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         
-        # Zone de logs
+        # Zone de logs avec style amélioré
         self.log_text = scrolledtext.ScrolledText(progress_frame, height=15, width=40, 
-                                                 font=('Monaco', 9))
+                                                 font=('Monaco', 9),
+                                                 bg='#f8f9fa', fg='#333333',
+                                                 wrap=tk.WORD, state=tk.NORMAL)
         self.log_text.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+        # Message d'accueil dans les logs
+        welcome_msg = "🧹 MacCleaner Pro - Prêt à nettoyer votre Mac !\n"
+        welcome_msg += "📋 Les opérations s'afficheront ici en temps réel...\n\n"
+        self.log_text.insert(tk.END, welcome_msg)
         
         progress_frame.columnconfigure(0, weight=1)
         progress_frame.rowconfigure(2, weight=1)
+        
+        # Maintenant rediriger les logs vers l'interface graphique
+        self.setup_logging()
+        
+    def setup_logging(self):
+        """Configuration du système de logs pour l'interface graphique"""
+        def log_to_gui(message):
+            """Afficher les logs dans l'interface graphique"""
+            timestamp = datetime.now().strftime('%H:%M:%S')
+            formatted_msg = f"[{timestamp}] {message}\n"
+            
+            # Thread-safe update de l'interface
+            self.root.after(0, lambda: self._update_log_display(formatted_msg))
+            
+            # Aussi afficher dans le terminal pour debug
+            print(f"[LOG] {message}")
+        
+        # Remplacer la fonction de log temporaire
+        self.log_message = log_to_gui
+        
+        # Mettre à jour les scanners avec la nouvelle fonction de log
+        if hasattr(self, 'heuristic_scanner'):
+            self.heuristic_scanner.log = self.log_message
+        if hasattr(self, 'malware_scanner'):
+            self.malware_scanner.log = self.log_message
+        if hasattr(self, 'auto_scheduler'):
+            self.auto_scheduler.log = self.log_message
+        if hasattr(self, 'plugin_manager'):
+            self.plugin_manager.log_fn = self.log_message
+            
+    def _update_log_display(self, message):
+        """Mettre à jour l'affichage des logs de manière thread-safe"""
+        try:
+            self.log_text.insert(tk.END, message)
+            self.log_text.see(tk.END)  # Auto-scroll vers le bas
+            
+            # Limiter le nombre de lignes (garder seulement les 1000 dernières)
+            lines = self.log_text.get('1.0', tk.END).split('\n')
+            if len(lines) > 1000:
+                self.log_text.delete('1.0', f'{len(lines)-1000}.0')
+                
+        except Exception as e:
+            print(f"Erreur affichage log: {e}")
         
     def create_action_buttons(self, parent):
         """Création des boutons d'action"""

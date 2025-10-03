@@ -142,10 +142,9 @@ class HeuristicScanner:
                             age = time.time() - stat.st_mtime
                             
                             if age < 300:  # 5 minutes
-                                # Fichier récent, vérifier si suspect
-                                if (item.suffix.lower() in self.suspicious_extensions or
-                                    self._is_suspicious_name(item.name)):
-                                    
+                                # Double validation: extension ET nom suspect
+                                # Mais JAMAIS pour les fichiers Apple
+                                if self._is_truly_suspicious_file(item):
                                     alert_key = f"file_{item}"
                                     if alert_key not in self.file_watchers:
                                         self._create_alert(
@@ -189,13 +188,73 @@ class HeuristicScanner:
         except Exception as e:
             self.log(f"❌ Erreur check réseau: {e}")
     
-    def _is_suspicious_name(self, filename):
-        """Vérifier si nom de fichier suspect"""
-        suspicious_patterns = [
-            'launch', 'daemon', 'agent', 'auto', 'startup', 'login',
-            'keylog', 'capture', 'monitor', 'spy', 'rat', 'backdoor'
+    def _is_truly_suspicious_file(self, file_path):
+        """Validation complète pour éviter les faux positifs Apple"""
+        filename = file_path.name.lower()
+        
+        # 1. JAMAIS signaler les fichiers Apple
+        if 'com.apple.' in filename:
+            return False
+            
+        # 2. Ignorer les fichiers système connus
+        apple_system_files = [
+            'contextstore', 'dataaccess.babysitter', 'spaces',
+            'assistant', 'sharingd', 'ncprefs', 'icloud',
+            'speech.recognition', 'telephonyutilities', 'duetexpertcenter',
+            'knowledge-agent', 'xpc.activity', 'calaccessd', 'addressbook'
         ]
+        
+        for system_file in apple_system_files:
+            if system_file in filename:
+                return False
+        
+        # 3. Seulement pour des fichiers VRAIMENT suspects
+        # Extensions suspectes MAIS pas dans Preferences Apple
+        if file_path.suffix.lower() == '.plist':
+            # Les .plist dans Preferences sont généralement légitimes
+            if 'preferences' in str(file_path.parent).lower():
+                return False
+        
+        # 4. Vérifier le nom avec la nouvelle fonction
+        return self._is_suspicious_name(filename)
+
+    def _is_suspicious_name(self, filename):
+        """Vérifier si nom de fichier suspect - avec filtrage intelligent Apple"""
+        
+        # Exclure TOUS les fichiers système Apple
         filename_lower = filename.lower()
+        
+        # Patterns Apple à ignorer complètement
+        apple_patterns = [
+            'com.apple.',           # Tous les fichiers Apple
+            'contextstore',         # ContextStoreAgent
+            'dataaccess.babysitter', # com.apple.dataaccess.babysitter
+            'spaces',               # com.apple.spaces
+            'assistant',            # com.apple.assistant
+            'sharingd',             # com.apple.sharingd
+            'ncprefs',              # com.apple.ncprefs
+            'icloud',               # iCloud related
+            'speech.recognition',   # Speech recognition
+            'telephonyutilities',   # Telephony
+            'duetexpertcenter',     # Duet Expert
+            'knowledge-agent',      # Knowledge agent
+            'xpc.activity',         # XPC activities
+            'calaccessd',           # Calendar access
+            'addressbook'           # Address book
+        ]
+        
+        # Si c'est un fichier Apple, ne pas le considérer comme suspect
+        for pattern in apple_patterns:
+            if pattern in filename_lower:
+                return False
+        
+        # Patterns vraiment suspects (pas Apple)
+        suspicious_patterns = [
+            'keylog', 'capture', 'monitor', 'spy', 'rat', 'backdoor',
+            'cryptominer', 'miner', 'stealer', 'ransomware', 'trojan',
+            'malware', 'virus', 'exploit', 'payload'
+        ]
+        
         return any(pattern in filename_lower for pattern in suspicious_patterns)
     
     def _create_alert(self, alert_type, message, metadata=None):
