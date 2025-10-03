@@ -1,0 +1,22 @@
+=== SAUVEGARDE MACCLEANER PRO ===
+Date: Ven  3 oct 2025 18:04:05 CEST
+Version: Correction Scanner Heuristique
+Statut: Complète - 8/8 tests validés
+
+CORRECTIONS APPLIQUÉES:
+- ✅ Correction AttributeError 'get_scan_results'
+- ✅ Format de retour du scanner heuristique
+- ✅ Compatibilité interface utilisateur
+- ✅ Actions automatiques intelligentes
+- ✅ Filtrage fichiers système Apple
+- ✅ Méthodes de nettoyage réel
+- ✅ Base de données des signatures
+
+TESTS VALIDÉS:
+- ✅ 8/8 tests de validation générale
+- ✅ 7/7 tests scanner heuristique
+- ✅ Nettoyage réel : 398.8 MB libérés
+- ✅ Scanner opérationnel sans erreurs
+
+FICHIERS SAUVEGARDÉS:       50 fichiers
+TAILLE TOTALE: 412K
