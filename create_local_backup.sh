@@ -5,7 +5,7 @@ Sauvegarde les fichiers critiques avec horodatage
 """
 
 # Configuration
-BACKUP_DIR="backups/$(date +%Y%m%d_%H%M%S)_CORRECTION_SCANNER"
+BACKUP_DIR="backup/$(date +%Y%m%d_%H%M%S)_CORRECTION_SCANNER"
 PROJECT_DIR="/Users/loicdeloison/MacCleaner"
 
 echo "🔄 Création de la sauvegarde locale..."
